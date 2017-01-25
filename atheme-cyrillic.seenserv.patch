@@ -1,0 +1,1912 @@
+diff --git a/include/account.h b/include/account.h
+index 4ce1c68..650ea16 100644
+--- a/include/account.h
++++ b/include/account.h
+@@ -187,7 +187,8 @@ struct mychan_
+ #define MC_PRIVATE     0x00000400
+ #define MC_NOSYNC      0x00000800
+ #define MC_ANTIFLOOD   0x00001000
+-#define MC_PUBACL      0x00002000
++#define MC_SEEN_GUARD  0x00002000
++#define MC_PUBACL      0x00004000
+ 
+ /* The following are temporary state */
+ #define MC_INHABIT     0x80000000 /* we're on channel to enforce akick/staffonly/close */
+diff --git a/include/match.h b/include/match.h
+index 255e029..d570a4d 100644
+--- a/include/match.h
++++ b/include/match.h
+@@ -27,6 +27,8 @@ E int match_mapping;
+ #define C_DIGIT 0x00000002
+ #define C_NICK  0x00000004
+ #define C_USER  0x00000008
++#define CYR_C   0x40000 /* Added cyrillic support by Rix @ 27 May 2016 */
++#define NALPHA_C 0x80000 /* Added cyrillic support by Deyan Hristanov */
+ 
+ E const unsigned int charattrs[];
+ 
+@@ -36,6 +38,8 @@ E const unsigned int charattrs[];
+ #define IsUserChar(c)   (charattrs[(unsigned char) (c)] & C_USER)
+ #define IsAlphaNum(c)   (IsAlpha((c)) || IsDigit((c)))
+ #define IsNon(c)        (!IsAlphaNum((c)))
++#define IsCyrChar(c)    (CharAttrs[(unsigned char)(c)] & CYR_C)
++#define NIsAlpha(c)    (CharAttrs[(unsigned char)(c)] & NALPHA_C)
+ 
+ E const unsigned char ToLowerTab[];
+ E const unsigned char ToUpperTab[];
+diff --git a/libathemecore/flags.c b/libathemecore/flags.c
+index f4c96c2..e4cab22 100644
+--- a/libathemecore/flags.c
++++ b/libathemecore/flags.c
+@@ -87,6 +87,7 @@ gflags_t mc_flags[] = {
+ 	{ 'p', MC_PRIVATE },
+ 	{ 'n', MC_NOSYNC },
+ 	{ 'f', MC_ANTIFLOOD },
++	{ 's', MC_SEEN_GUARD },
+ 	{ 0, 0 },
+ };
+ 
+diff --git a/libathemecore/match.c b/libathemecore/match.c
+index a68aff8..cfcafe5 100644
+--- a/libathemecore/match.c
++++ b/libathemecore/match.c
+@@ -96,10 +96,11 @@ const unsigned char ToUpperTab[] = {
+ 	0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf,
+ 	0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8, 0xd9,
+ 	0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf,
+-	0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9,
+-	0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
+-	0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9,
+-	0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
++
++        0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7, 0xc8, 0xc9,
++        0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf,
++        0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8, 0xd9,
++        0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf
+ };
+ 
+ int ToLower(int c)
+@@ -577,6 +578,71 @@ const unsigned int charattrs[] = {
+ 	/* 0xFD */ 0,
+ 	/* 0xFE */ 0,
+ 	/* 0xFF */ 0,
++/* 0xC0 */ 0,
++/* 0xC1 */ 0,
++/* 0xC2 */ 0,
++/* 0xC3 */ 0,
++/* 0xC4 */ 0,
++/* 0xC5 */ 0,
++/* 0xC6 */ 0,
++/* 0xC7 */ 0,
++/* 0xC8 */ 0,
++/* 0xC9 */ 0,
++/* 0xCA */ 0,
++/* 0xCB */ 0,
++/* 0xCC */ 0,
++/* 0xCD */ 0,
++/* 0xCE */ 0,
++/* 0xCF */ 0,
++/* 0xD0 */ 0,
++/* 0xD1 */ 0,
++/* 0xD2 */ 0,
++/* 0xD3 */ 0,
++/* 0xD4 */ 0,
++/* 0xD5 */ 0,
++/* 0xD6 */ 0,
++/* 0xD7 */ 0,
++/* 0xD8 */ 0,
++/* 0xD9 */ 0,
++/* 0xDA */ 0,
++/* 0xDB */ 0,
++/* 0xDC */ 0,
++/* 0xDD */ 0,
++/* 0xDE */ 0,
++/* 0xDF */ 0,
++/* 0xE0 */ 0,
++/* 0xE1 */ 0,
++/* 0xE2 */ 0,
++/* 0xE3 */ 0,
++/* 0xE4 */ 0,
++/* 0xE5 */ 0,
++/* 0xE6 */ 0,
++/* 0xE7 */ 0,
++/* 0xE8 */ 0,
++/* 0xE9 */ 0,
++/* 0xEA */ 0,
++/* 0xEB */ 0,
++/* 0xEC */ 0,
++/* 0xED */ 0,
++/* 0xEE */ 0,
++/* 0xEF */ 0,
++/* 0xF0 */ 0,
++/* 0xF1 */ 0,
++/* 0xF2 */ 0,
++/* 0xF3 */ 0,
++/* 0xF4 */ 0,
++/* 0xF5 */ 0,
++/* 0xF6 */ 0,
++/* 0xF7 */ 0,
++/* 0xF8 */ 0,
++/* 0xF9 */ 0,
++/* 0xFA */ 0,
++/* 0xFB */ 0,
++/* 0xFC */ 0,
++/* 0xFD */ 0,
++/* 0xFE */ 0,
++/* 0xFF */ 0,
++
+ };
+ 
+ enum atheme_regex_type
+diff --git a/modules/Makefile b/modules/Makefile
+index f61400c..b43555d 100644
+--- a/modules/Makefile
++++ b/modules/Makefile
+@@ -21,6 +21,7 @@ SUBDIRS = \
+ 	proxyscan \
+ 	rpgserv \
+ 	saslserv \
++	seenserv \
+ 	security \
+ 	statserv \
+ 	scripting \
+diff --git a/modules/seenserv/Makefile b/modules/seenserv/Makefile
+new file mode 100644
+index 0000000..a8f8312
+--- /dev/null
++++ b/modules/seenserv/Makefile
+@@ -0,0 +1,25 @@
++# Copyright (c) 2003-2004 E. Will et al.
++# Rights to this code are documented in doc/LICENSE.
++#
++# This file contains build instructions.
++#
++# $Id: Makefile.in 8375 2007-06-03 20:03:26Z pippijn $
++#
++
++MODULE = seenserv
++
++SRCS = main.c \
++       join.c \
++	   part.c \
++       seen.c \
++	   help.c \
++	   info.c \
++	   expiredays.c \
++	   clear.c
++
++include ../../extra.mk
++include ../../buildsys.mk
++include ../../buildsys.module.mk
++
++CPPFLAGS	+= -I../../include
++LIBS +=	-L../../libathemecore -lathemecore ${LDFLAGS_RPATH}
+diff --git a/modules/seenserv/clear.c b/modules/seenserv/clear.c
+new file mode 100644
+index 0000000..af26b33
+--- /dev/null
++++ b/modules/seenserv/clear.c
+@@ -0,0 +1,48 @@
++/*
++ * Copyright (c) 2016 Deyan Hristanov <gameoverbg@gmail.com>.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
++ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
++ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
++ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
++ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "atheme.h"
++
++DECLARE_MODULE_V1
++(
++	"seenserv/clear", false, _modinit, _moddeinit,
++	PACKAGE_STRING,
++	VENDOR_STRING
++);
++
++static void seen_cmd_clear(sourceinfo_t *si, int parc, char *parv[]);
++
++command_t seen_clear = { "CLEAR", N_("Clear info in SeenServ db."), PRIV_ADMIN, 1, seen_cmd_clear, { .path = "seenserv/clear" } };
++
++void _modinit(module_t *m)
++{
++        service_named_bind_command("seenserv", &seen_clear);
++}
++
++void _moddeinit(module_unload_intent_t intent)
++{
++	service_named_unbind_command("seenserv", &seen_clear);
++}
++
++static void seen_cmd_clear(sourceinfo_t *si, int parc, char *parv[])
++{
++	logcommand(si, CMDLOG_GET, "CLEAR");
++	command_success_nodata(si, _("It works!"));
++}
+\ No newline at end of file
+diff --git a/modules/seenserv/expiredays.c b/modules/seenserv/expiredays.c
+new file mode 100644
+index 0000000..7746eed
+--- /dev/null
++++ b/modules/seenserv/expiredays.c
+@@ -0,0 +1,48 @@
++/*
++ * Copyright (c) 2016 Deyan Hristanov <gameoverbg@gmail.com>.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
++ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
++ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
++ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
++ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "atheme.h"
++
++DECLARE_MODULE_V1
++(
++	"seenserv/expiredays", false, _modinit, _moddeinit,
++	PACKAGE_STRING,
++	VENDOR_STRING
++);
++
++static void seen_cmd_expiredays(sourceinfo_t *si, int parc, char *parv[]);
++
++command_t seen_expiredays = { "EXPIREDAYS", N_("Change expiredays option in SeenServ (WARNING: after reboot SeenServ takes the value from conf file)."), PRIV_ADMIN, 1, seen_cmd_expiredays, { .path = "seenserv/expiredays" } };
++
++void _modinit(module_t *m)
++{
++        service_named_bind_command("seenserv", &seen_expiredays);
++}
++
++void _moddeinit(module_unload_intent_t intent)
++{
++	service_named_unbind_command("seenserv", &seen_expiredays);
++}
++
++static void seen_cmd_expiredays(sourceinfo_t *si, int parc, char *parv[])
++{
++	logcommand(si, CMDLOG_GET, "EXPIREDAYS");
++	command_success_nodata(si, _("It works!"));
++}
+\ No newline at end of file
+diff --git a/modules/seenserv/help.c b/modules/seenserv/help.c
+new file mode 100644
+index 0000000..7cdfbf1
+--- /dev/null
++++ b/modules/seenserv/help.c
+@@ -0,0 +1,86 @@
++/*
++ * Copyright (c) 2015 Deyan Hristanov <gameoverbg@gmail.com>.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
++ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
++ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
++ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
++ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "atheme.h"
++
++DECLARE_MODULE_V1
++(
++     "seenserv/help", false, _modinit, _moddeinit,
++    PACKAGE_STRING, 
++	"Deyan Hristanov <gameoverbg@gmail.com>"
++);
++
++static void seen_cmd_help(sourceinfo_t *si, int parc, char *parv[]);
++
++command_t seen_help = { "HELP", N_("Displays contextual help information."),
++                         AC_NONE, 1, seen_cmd_help, { .path = "help"} };
++
++void _modinit(module_t *m)
++{
++	service_named_bind_command("seenserv", &seen_help);
++}
++
++void _moddeinit(module_unload_intent_t intent)
++{
++	service_named_unbind_command("seenserv", &seen_help);
++}
++
++
++static void seen_cmd_help(sourceinfo_t *si, int parc, char *parv[])
++{
++    char *command = parv[0];
++     
++	if (si->c)
++	{
++		command = strchr(command, ' ');
++		if (command != NULL)
++			command++;
++	}
++		
++    if (!command)
++    {
++        command_success_nodata(si, _("***** \2%s Help\2 *****"), si->service->nick);
++        command_success_nodata(si, _("\2%s\2 is a utility allowing IRC users to obtain"),
++                si->service->nick);
++        command_success_nodata(si, "'last seen' information on certain nicknames or hosts."); 
++        command_success_nodata(si, "To use the following commands, type: /msg SeenServ <command>."); 
++        command_success_nodata(si, " ");
++        command_success_nodata(si, _("For more information on a command, type:"));
++        command_success_nodata(si, "\2/%s%s help <command>\2",
++                (ircd->uses_rcommand == false) ? "msg " : "",
++                si->service->disp);
++        command_success_nodata(si, " ");
++
++        command_help(si, si->service->commands);
++
++        command_success_nodata(si, _("***** \2End of Help\2 *****"));
++        return;
++    }
++
++	if (!strcasecmp("COMMANDS", command))
++	{
++		command_success_nodata(si, _("***** \2%s Help\2 *****"), si->service->nick);
++		command_help(si, si->service->commands);
++		command_success_nodata(si, _("***** \2End of Help\2 *****"));
++		return;
++	}
++	
++    help_display(si, si->service, command, si->service->commands);
++}
+diff --git a/modules/seenserv/info.c b/modules/seenserv/info.c
+new file mode 100644
+index 0000000..77e8c6d
+--- /dev/null
++++ b/modules/seenserv/info.c
+@@ -0,0 +1,48 @@
++/*
++ * Copyright (c) 2016 Deyan Hristanov <gameoverbg@gmail.com>.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
++ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
++ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
++ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
++ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "atheme.h"
++
++DECLARE_MODULE_V1
++(
++	"seenserv/info", false, _modinit, _moddeinit,
++	PACKAGE_STRING,
++	VENDOR_STRING
++);
++
++static void seen_cmd_info(sourceinfo_t *si, int parc, char *parv[]);
++
++command_t seen_info = { "INFO", N_("Shows some useful information about the SeenServ activity."), PRIV_CHAN_ADMIN, 1, seen_cmd_info, { .path = "seenserv/info" } };
++
++void _modinit(module_t *m)
++{
++        service_named_bind_command("seenserv", &seen_info);
++}
++
++void _moddeinit(module_unload_intent_t intent)
++{
++	service_named_unbind_command("seenserv", &seen_info);
++}
++
++static void seen_cmd_info(sourceinfo_t *si, int parc, char *parv[])
++{
++	logcommand(si, CMDLOG_GET, "INFO");
++	command_success_nodata(si, _("It works!"));
++}
+\ No newline at end of file
+diff --git a/modules/seenserv/join.c b/modules/seenserv/join.c
+new file mode 100644
+index 0000000..abc4e0f
+--- /dev/null
++++ b/modules/seenserv/join.c
+@@ -0,0 +1,91 @@
++/*
++ * Copyright (c) 2015 Deyan Hristanov <gameoverbg@gmail.com>.
++ * Copyright (c) 2016 Al Indjov <ali.indzhov@gmail.com>.
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
++ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
++ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
++ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
++ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "atheme.h"
++#include "seenserv.h"
++
++DECLARE_MODULE_V1("seenserv/join", false, _modinit, _moddeinit, PACKAGE_STRING, "Deyan Hristanov <gameoverbg@gmail.com>");
++
++static void seen_cmd_join(sourceinfo_t *si, int parc, char *parv[]);
++
++command_t seen_join = { "JOIN", N_("Joins a specified channel (identified successors and above)"), AC_NONE, 2, seen_cmd_join, {.path = "seenserv/join"} };
++
++void _modinit(module_t *m)
++{
++	service_named_bind_command("seenserv", &seen_join);
++}
++
++void _moddeinit(module_unload_intent_t intent)
++{
++	service_named_unbind_command("seenserv", &seen_join);
++}
++
++
++void seen_cmd_join(sourceinfo_t *si, int parc, char *parv[])
++{
++
++	char *chan = parv[0];
++	int guardsts = 0;
++	mychan_t *mc;
++	
++	service_t *seensvs = si->service;
++	
++	// Ignore fantasy commands
++	if (si->c != NULL)
++		return;
++	
++	if (!chan)
++	{
++		command_fail(si, fault_needmoreparams, STR_INSUFFICIENT_PARAMS, "JOIN");
++		command_fail(si, fault_needmoreparams, "Syntax: JOIN <#channel>");
++		return;
++	}
++
++
++	if (!(mc = mychan_find(chan)))
++	{
++		command_fail(si, fault_nosuch_target, _("Channel \2%s\2 is not registered."), chan);
++		return;
++	}
++
++ 	if (!(chanacs_source_has_flag(mc, si, CA_SET) || has_priv(si, PRIV_CHAN_ADMIN)))
++	{
++		command_fail(si, fault_noprivs, _("You are not authorized to perform this command."));
++		return;		
++	}
++	
++	if (MC_SEEN_GUARD & mc->flags)
++	{
++		command_fail(si, fault_nochange, _("SeenServ is already in channel \2%s\2."), mc->name);
++		return;
++	}
++
++	 part(mc->name, chansvs.nick);
++ 
++	 join(mc->name, si->service->nick);
++	  mc->flags |= MC_SEEN_GUARD;
++  
++	if (mc->flags & MC_GUARD)
++	 join(mc->name, chansvs.nick);	
++		
++	 command_success_nodata(si, _("SeenServ will join channel \2%s\2."), mc->name);
++	 return;	 
++		
++}
+diff --git a/modules/seenserv/main.c b/modules/seenserv/main.c
+new file mode 100644
+index 0000000..6a7f09b
+--- /dev/null
++++ b/modules/seenserv/main.c
+@@ -0,0 +1,377 @@
++/*
++ * Copyright (c) 2015 Deyan Hristanov <gameoverbg@gmail.com>.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
++ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
++ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
++ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
++ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "atheme.h"
++#include "seenserv.h"
++
++DECLARE_MODULE_V1
++(
++        "seenserv/main", true, _modinit, _moddeinit,
++		PACKAGE_STRING, 
++		"Deyan Hristanov <gameoverbg@gmail.com>"
++);
++
++//service_t *seensrv;
++
++static void seena_join(hook_channel_joinpart_t *hdata);
++static void seena_part(hook_channel_joinpart_t *hdata);
++static void seena_on_shutdown(void *unused);
++static void seen_leave_empty(void *unused);
++
++static mowgli_eventloop_timer_t *seen_leave_empty_timer = NULL;
++
++static void seen_handle_nickchange(user_t *u)
++{
++	if (seensrv.me == NULL || chansvs.me == NULL)
++		return;
++	char host[BUFSIZE];
++	seen_db_t dbs;
++	snprintf(host, sizeof host, "%s!%s@%s", u->nick, u->user, u->vhost);
++	strcpy(dbs.purp, "S");
++	dbs.method = 1;
++	dbs.host = host;
++	dbs.time_in = CURRTIME;
++	dbs.time_out = 0;
++	dbs.reason = "";
++	seen_db_t *cptr = &dbs;
++	seen_write_to_db(u->nick, cptr);
++}
++
++static void seen_nickchange(hook_user_nick_t *data)
++{
++	char host[BUFSIZE], reason[BUFSIZE];
++	user_t *u = data->u;
++	seen_db_t dbs;
++	snprintf(host, sizeof host, "%s!%s@%s", data->oldnick, u->user, u->vhost);
++	strcpy(dbs.purp, "P");
++	dbs.method = 1;
++	dbs.host = host;
++	dbs.time_in = CURRTIME;
++	dbs.time_out = CURRTIME;
++	snprintf(reason, sizeof reason, "changing nick from %s to %s", data->oldnick, u->nick);
++	dbs.reason = reason;
++	seen_db_t *cptr = &dbs;
++	seen_write_to_db(u->nick, cptr);
++}
++static void seen_user_delete_info_hook(hook_user_delete_t *hdata)
++{    
++	char host[BUFSIZE], reason[BUFSIZE];
++	user_t *u = hdata->u;
++	seen_db_t dbs;
++	snprintf(host, sizeof host, "%s!%s@%s", u->nick, u->user, u->vhost);
++	strcpy(dbs.purp, "P");
++	dbs.method = 1;
++	dbs.host = host;
++	dbs.time_in = CURRTIME;
++	dbs.time_out = CURRTIME;
++	snprintf(reason, sizeof reason, "Quiting: %s", hdata->comment);
++	dbs.reason = reason;
++	seen_db_t *cptr = &dbs;
++	seen_write_to_db(u->nick, cptr);
++}
++//int match(const char *mask, const char *name) funkciq za match sus zvezdichki 
++static void seenserv(sourceinfo_t *si, int parc, char *parv[])
++{
++	mychan_t *mc = NULL;
++	char orig[BUFSIZE];
++	char newargs[BUFSIZE];
++	char *cmd;
++	char *args;
++	char seenalt[BUFSIZE];
++
++	/* this should never happen */
++	if (parv[parc - 2][0] == '&')
++	{
++		slog(LG_ERROR, "services(): got parv with local channel: %s", parv[0]);
++		return;
++	}
++
++	/* is this a fantasy command? */
++	if (parv[parc - 2][0] == '#')
++	{
++		metadata_t *md;
++
++		if (chansvs.fantasy == false)
++		{
++			/* *all* fantasy disabled */
++			return;
++		}
++
++		mc = mychan_find(parv[parc - 2]);
++		if (!mc)
++		{
++			/* unregistered, NFI how we got this message, but let's leave it alone! */
++			return;
++		}
++
++		md = metadata_find(mc, "disable_fantasy");
++		if (md)
++		{
++			/* fantasy disabled on this channel. don't message them, just bail. */
++			return;
++		}
++	}
++
++	/* make a copy of the original for debugging */
++	mowgli_strlcpy(orig, parv[parc - 1], BUFSIZE);
++    mowgli_strlcpy(seenalt, parv[parc - 1], BUFSIZE);
++	/* lets go through this to get the command */
++	cmd = strtok(seenalt, " ");
++	if (!cmd)
++		return;
++	if (*orig == '\001')
++	{
++		handle_ctcp_common(si, cmd, strtok(NULL, ""));
++		return;
++	}
++	/* take the command through the hash table */
++	if (mc == NULL)
++		command_exec_split(si->service, si, cmd, strtok(NULL, ""), si->service->commands);
++	else
++	{
++		metadata_t *md = metadata_find(mc, "private:prefix");
++		const char *prefix = (md ? md->value : seensrv.trigger);
++
++		if (strlen(cmd) >= 2 && strchr(prefix, cmd[0]) && isalpha((unsigned char)*++cmd))
++		{			
++			const char *realcmd = service_resolve_alias(si->service, NULL, cmd);
++			/* XXX not really nice to look up the command twice
++			 * -- jilles */
++			if (command_find(si->service->commands, realcmd) == NULL)
++				return;
++			if (floodcheck(si->su, si->service->me))
++				return;
++			/* construct <channel> <args> */
++			mowgli_strlcpy(newargs, parv[parc - 2], sizeof newargs);
++			args = strtok(NULL, " ");
++			// while (args != NULL)
++            // {
++				// mowgli_strlcat(newargs, " ", sizeof newargs);
++				// mowgli_strlcat(newargs, args, sizeof newargs);				
++			// }
++			while (args != NULL)
++            {
++				mowgli_strlcat(newargs, " ", sizeof newargs);
++				mowgli_strlcat(newargs, args, sizeof newargs);
++				args = strtok(NULL, " ");			
++			}
++			/* if (args != NULL)
++			{
++				mowgli_strlcat(newargs, " ", sizeof newargs);
++				mowgli_strlcat(newargs, args, sizeof newargs);
++			}
++
++			args = strtok(NULL, " ");
++
++			if (args != NULL)
++			{
++				mowgli_strlcat(newargs, " ", sizeof newargs);
++				mowgli_strlcat(newargs, args, sizeof newargs);
++			} */
++			/* let the command know it's called as fantasy cmd */
++			si->c = mc->chan;
++			/* fantasy commands are always verbose
++			 * (a little ugly but this way we can !set verbose)
++			 */
++			mc->flags |= MC_FORCEVERBOSE;
++			command_exec_split(si->service, si, realcmd, newargs, si->service->commands);
++			mc->flags &= ~MC_FORCEVERBOSE;
++		}
++		else if (!ircncasecmp(cmd, seensrv.nick, strlen(seensrv.nick)) && !isalnum((unsigned char)cmd[strlen(seensrv.nick)]) && (cmd = strtok(NULL, "")) != NULL)
++		{
++			//const char *realcmd;
++			//char *pptr;
++            //command_success_nodata(si, _("second"));
++			//mowgli_strlcpy(newargs, parv[parc - 2], sizeof newargs);
++			//while (*cmd == ' ')
++				//cmd++;
++			//if ((pptr = strchr(cmd, ' ')) != NULL)
++			//{
++				//mowgli_strlcat(newargs, pptr, sizeof newargs);
++				//*pptr = '\0';
++			//}
++
++			//realcmd = service_resolve_alias(si->service, NULL, cmd);
++
++			//if (command_find(si->service->commands, realcmd) == NULL)
++				//return;
++			//if (floodcheck(si->su, si->service->me))
++				//return;
++
++			//si->c = mc->chan;
++
++			//* fantasy commands are always verbose
++			 //* (a little ugly but this way we can !set verbose)
++			 //*/
++			//mc->flags |= MC_FORCEVERBOSE;
++			//command_exec_split(si->service, si, realcmd, newargs, si->service->commands);
++			//mc->flags &= ~MC_FORCEVERBOSE;
++		}
++	}
++}
++
++static void seen_config_ready(void *unused)
++{
++	seensrv.nick = seensrv.me->nick;
++	seensrv.user = seensrv.me->user;
++	seensrv.host = seensrv.me->host;
++	seensrv.real = seensrv.me->real;
++	
++	service_set_chanmsg(seensrv.me, true);
++}
++
++void _modinit(module_t *m)
++{
++	hook_add_event("config_ready");
++	hook_add_config_ready(seen_config_ready);
++
++    hook_add_event("nick_check");
++    hook_add_nick_check(seen_handle_nickchange);
++		
++	seensrv.me = service_add("seenserv", seenserv);
++	
++	hook_add_event("user_delete_info");
++	hook_add_user_delete_info(seen_user_delete_info_hook);
++	
++	hook_add_event("channel_join");
++	hook_add_event("channel_part");
++	hook_add_event("shutdown");
++	hook_add_event("user_nickchange");
++	hook_add_channel_join(seena_join);
++	hook_add_channel_part(seena_part);
++	hook_add_shutdown(seena_on_shutdown);
++	hook_add_user_nickchange(seen_nickchange);
++	
++	seen_leave_empty_timer = mowgli_timer_add(base_eventloop, "seen_leave_empty", seen_leave_empty, NULL, 300);
++	add_dupstr_conf_item("TRIGGER", &seensrv.me->conf_table, 0, &seensrv.trigger, "!");
++	add_bool_conf_item("FANTASY", &seensrv.me->conf_table, 0, &seensrv.fantasy, false);
++	add_uint_conf_item("SEENEXPIRE", &seensrv.me->conf_table, 0, &seensrv.seenexpire, 1, 1000, 30);
++}
++
++void _moddeinit(module_unload_intent_t intent)
++{    	
++	hook_del_config_ready(seen_config_ready);
++    hook_del_nick_check(seen_handle_nickchange);
++	if (seensrv.me)
++	{
++		seensrv.nick = NULL;
++		seensrv.user = NULL;
++		seensrv.host = NULL;
++		seensrv.real = NULL;
++		service_delete(seensrv.me);
++		seensrv.me = NULL;
++	}
++	
++	//hook_del_user_delete_info(seen_user_delete_info_hook);   
++ 	
++    hook_del_channel_join(seena_join);
++	hook_del_channel_part(seena_part);
++    hook_del_shutdown(seena_on_shutdown);
++	//hook_del_user_nickchange(seen_nickchange);
++	mowgli_timer_destroy(base_eventloop, seen_leave_empty_timer);
++}
++
++static void seena_join(hook_channel_joinpart_t *hdata)
++{
++	chanuser_t *cu = hdata->cu;
++	channel_t *chan;
++	mychan_t *mc;
++	user_t *u;
++	
++	if (cu == NULL || is_internal_client(cu->user))
++		return;
++	chan = cu->chan;
++
++	/* first check if this is a registered channel at all */
++	mc = mychan_from(chan);
++	if (mc == NULL)
++		return;
++
++	if (mc->flags & MC_SEEN_GUARD)
++	   {
++		join(chan->name, seensrv.nick);
++	   }
++	if (mc->flags & MC_GUARD)
++	   {
++		join(chan->name, chansvs.nick);
++	   }	
++}
++
++static void seena_part(hook_channel_joinpart_t *hdata)
++{
++	chanuser_t *cu;
++	mychan_t *mc;
++
++	cu = hdata->cu;
++	if (cu == NULL)
++		return;
++	mc = mychan_find(cu->chan->name);
++	if (mc == NULL)
++		return;
++	
++	if (!config_options.leave_chans)
++		return;
++	
++	if (cu->chan->nummembers - cu->chan->numsvcmembers > 1)
++		return;
++
++	if (is_internal_client(cu->user))
++		return;
++	
++	/* if we're enforcing an akick, we're MC_INHABIT.  do not part. */
++	if (mc->flags & MC_INHABIT)
++	{
++		slog(LG_DEBUG, "cs_part(): not leaving channel %s due to MC_INHABIT flag", mc->name);
++		return;
++	}
++	
++	part(cu->chan->name, seensrv.nick);
++}
++static void seena_on_shutdown(void *unused)
++{
++	if (seensrv.me != NULL)
++		quit_sts(seensrv.me->me, "shutting down");
++}
++
++static void seen_leave_empty(void *unused)
++{
++	mychan_t *mc;
++	mowgli_patricia_iteration_state_t state;
++
++	(void)unused;
++	MOWGLI_PATRICIA_FOREACH(mc, &state, mclist)
++	{
++		if (!(mc->flags & MC_INHABIT))
++			continue;
++		/* If there is only one user, stay indefinitely. */
++		if (mc->chan != NULL && mc->chan->nummembers - mc->chan->numsvcmembers == 1)
++			continue;
++		mc->flags &= ~MC_INHABIT;
++		if (mc->chan != NULL &&
++				!(mc->chan->flags & CHAN_LOG) &&
++				(!(mc->flags & MC_SEEN_GUARD) ||
++				 (config_options.leave_chans && mc->chan->nummembers == mc->chan->numsvcmembers)) &&
++				chanuser_find(mc->chan, seensrv.me->me))
++		{
++			slog(LG_DEBUG, "seen_leave_empty(): leaving %s", mc->chan->name);
++			 part(mc->chan->name, seensrv.nick);
++		}
++	}
++}
+diff --git a/modules/seenserv/part.c b/modules/seenserv/part.c
+new file mode 100644
+index 0000000..fabf49d
+--- /dev/null
++++ b/modules/seenserv/part.c
+@@ -0,0 +1,82 @@
++/*
++ * Copyright (c) 2015 Deyan Hristanov <gameoverbg@gmail.com>.
++ * Copyright (c) 2016 Al Indjov <ali.indzhov@gmail.com>.
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
++ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
++ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
++ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
++ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "atheme.h"
++#include "seenserv.h"
++
++DECLARE_MODULE_V1("seenserv/part", false, _modinit, _moddeinit, PACKAGE_STRING, "Deyan Hristanov <gameoverbg@gmail.com>");
++
++static void seen_cmd_part(sourceinfo_t *si, int parc, char *parv[]);
++
++command_t seen_part = { "PART", N_("Parts a specified channel (identified successors and above)"), AC_NONE, 2, seen_cmd_part, {.path = "seenserv/part"} };
++
++void _modinit(module_t *m)
++{
++	service_named_bind_command("seenserv", &seen_part);
++}
++
++void _moddeinit(module_unload_intent_t intent)
++{
++
++	service_named_unbind_command("seenserv", &seen_part);
++}
++
++void seen_cmd_part(sourceinfo_t *si, int parc, char *parv[])
++{
++
++	char *chan = parv[0];
++	int guardsts = 0;
++	mychan_t *mc;
++	
++	service_t *seensvs = si->service;
++	// Ignore fantasy commands
++	if (si->c != NULL)
++		return;
++
++	if (!chan)
++	{
++		command_fail(si, fault_needmoreparams, STR_INSUFFICIENT_PARAMS, "PART");
++		command_fail(si, fault_needmoreparams, "Syntax: PART <#channel>");
++		return;
++	}
++	
++	if (!(mc = mychan_find(chan)))
++	{
++		command_fail(si, fault_nosuch_target, _("Channel \2%s\2 is not registered."), chan);
++		return;
++	}
++
++ 	if (chanacs_source_has_flag(mc, si, CA_SET) || has_priv(si, PRIV_CHAN_ADMIN))
++	{ 
++	} else {
++		command_fail(si, fault_noprivs, _("You are not authorized to perform this command."));
++		return;
++	}
++
++	if (!(MC_SEEN_GUARD & mc->flags))
++	{
++		command_fail(si, fault_nochange, _("SeenServ is already been gone from channel \2%s\2."), mc->name);
++		return;
++	}
++	 mc->flags &= ~MC_SEEN_GUARD;
++	 part(mc->name, si->service->nick);
++	 command_success_nodata(si, _("SeenServ will part channel \2%s\2."), mc->name);
++	 return;	 
++}
+diff --git a/modules/seenserv/seen.c b/modules/seenserv/seen.c
+new file mode 100644
+index 0000000..158e713
+--- /dev/null
++++ b/modules/seenserv/seen.c
+@@ -0,0 +1,245 @@
++/*Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
++ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,
++ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
++ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
++ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "atheme.h"
++#include "seenserv.h"
++
++DECLARE_MODULE_V1("seenserv/seen", false, _modinit, _moddeinit, PACKAGE_STRING, "Deyan Hristanov <gameoverbg@gmail.com>");
++
++static void seen_cmd_seen(sourceinfo_t *si, int parc, char *parv[]);
++static void seen_cmd_seennick(sourceinfo_t *si, int parc, char *parv[]);
++
++command_t seen_seen = { "SEEN", N_("Gives information on a nick/hostmask"), AC_NONE, 2, seen_cmd_seen, {.path = "seenserv/seen"} };
++
++command_t seen_seennick = { "SEENNICK", N_("Gives information on specific nick only"), AC_NONE, 2, seen_cmd_seennick, {.path = "seenserv/seennick"} };
++
++void _modinit(module_t *m)
++{
++	service_named_bind_command("seenserv", &seen_seen);
++	service_named_bind_command("seenserv", &seen_seennick);
++}
++
++void _moddeinit(module_unload_intent_t intent)
++{
++
++	service_named_unbind_command("seenserv", &seen_seen);
++	service_named_unbind_command("seenserv", &seen_seennick);
++}
++
++static void seen_cmd_seen(sourceinfo_t *si, int parc, char *parv[])
++{
++	seen_db_t dbs;
++	char *seen;
++	char *snick = parv[0];
++	char *option = parv[1];
++	if (si->c && parc >= 2)
++	{
++	option = strtok(parv[1], " ");
++	snick = option;
++	option = strtok(NULL, " ");	
++	} else {
++	option = strtok(parv[1], " ");
++	}
++	if (parc < 1)
++	{
++	 command_fail(si, fault_needmoreparams, _("Syntax: Syntax: \2SEEN <nick|hostmask>"));
++	 command_fail(si, fault_needmoreparams, _("Type \2/msg SeenServ HELP SEEN\2 for more information"));
++	 return;
++	}
++
++	int c;
++	  dbs.utf8str = 0;
++	if (match_utf_cyr(snick))
++	{
++	  snick = utf8_to_cp1251(snick);
++	  dbs.utf8str = 1;
++	}
++
++	dbs.method = 1;
++    dbs.recors = 1;
++	dbs.starting = 1;
++	dbs.exactm = false;
++while (option != NULL)
++{	
++if (option)
++{
++	if(option[0] == 'r')
++	{
++	   option++;
++	  if (strlen(option) == 1) 
++	  {
++		 if(isdigit(option[0]))
++		 if(option[0] <= '1' && '9' > option[0])
++		 {
++	         command_fail(si, fault_needmoreparams, _("Syntax: \2SEEN <nick|hostmask> rX\2 where \2X>1 X<=10"));
++	         return;			 
++		 }
++          dbs.recors = atoi(option);		 
++	  } else if(strlen(option) == 2) {
++		 if(option[0] != '1' || option[1] != '0')
++		 {
++	         command_fail(si, fault_needmoreparams, _("Syntax: \2SEEN <nick|hostmask> rX\2 where \2X>1 X<=10"));
++	         return;			 
++		 }
++          dbs.recors = atoi(option);		 
++	  }   
++	 }
++
++	if(option[0] == 's')
++	{
++	  option++;
++	  for(c=0;strlen(option) > c; c++)
++	    if(!isdigit(option[c]))
++		  {
++			 command_fail(si, fault_needmoreparams, _("Syntax: \2SEEN <nick|hostmask> sX\2 where X number"));
++	         return;  
++	     }
++		dbs.starting = atoi(option);
++	}
++
++	if(option[0] == 'c')
++	{
++	 dbs.exactm = true;	
++	}		
++  }
++ option = strtok(NULL, " ");  
++}
++      int count=0, match=0,i=0;
++      while(snick[i] != '\0')
++      {
++		  if ((unsigned char)snick[i] >= 0x41 && (unsigned char)snick[i] <= 0x7d || (unsigned char)snick[i] >=0x30 && (unsigned char)snick[i] <= 0x39 || (unsigned char)snick[i] >= 0xc0 && (unsigned char)snick[i] <= 0xff || (unsigned char)snick[i] == 0x2d)	  
++		  count++;
++		  
++		  if ((unsigned char)snick[i] == 0x2a || (unsigned char)snick[i] == 0x3f)
++		  match=1;
++		  
++		  i++;
++	  }
++	  
++	  if (count < 4 && match == 1)
++	  {
++		notice("SeenServ", si->su->nick, "\2%s\2 is too general, please include at least 4 non-wildcard characters.", snick);
++	  } else {
++	   strcpy(dbs.purp, "R");
++	   dbs.host = snick;
++	   seen_db_t *cptr = &dbs;
++	   seen_write_to_db(si->su->nick, cptr);		  
++	  }
++}
++
++static void seen_cmd_seennick(sourceinfo_t *si, int parc, char *parv[])
++{
++	seen_db_t dbs;
++	char *seen;
++	char *snick = parv[0];
++	char *option = parv[1];		
++	if (si->c && parc >= 2)
++	{
++	option = strtok(parv[1], " ");
++	snick = option;
++	option = strtok(NULL, " ");	
++	} else {
++	option = strtok(parv[1], " ");
++	}
++	if (parc < 1)
++	{
++	 command_fail(si, fault_needmoreparams, _("Syntax: Syntax: \2SEENNICK <nick>"));
++	 command_fail(si, fault_needmoreparams, _("Type \2/msg SeenServ HELP SEENNICK\2 for more information"));
++	 return;
++	}
++
++	int c;
++      	dbs.utf8str = 0;
++	if (match_utf_cyr(snick))
++	{
++	  snick = utf8_to_cp1251(snick);
++	  dbs.utf8str = 1;
++	}
++		
++	dbs.method = 0;
++    	dbs.recors = 1;
++	dbs.starting = 1;
++	dbs.exactm = false;
++	
++while (option != NULL)
++{ 	
++if (option)
++{
++	if(option[0] == 'r')
++	{
++	   option++;
++	  if (strlen(option) == 1) 
++	  {
++		 if(isdigit(option[0]))
++		 if(option[0] <= '1' && '9' > option[0])
++		 {
++	         command_fail(si, fault_needmoreparams, _("Syntax: \2SEENNICK <nick> rX\2 where \2X>1 X<=10"));
++	         return;			 
++		 }
++          dbs.recors = atoi(option);		 
++	  } else if(strlen(option) == 2) {
++		 if(option[0] != '1' || option[1] != '0')
++		 {
++	         command_fail(si, fault_needmoreparams, _("Syntax: \2SEENNICK <nick> rX\2 where \2X>1 X<=10"));
++	         return;			 
++		 }
++          dbs.recors = atoi(option);		 
++	  }   
++	 }
++
++	if(option[0] == 's')
++	{
++	  option++;
++	  for(c=0;strlen(option) > c; c++)
++	    if(!isdigit(option[c]))
++		  {
++			 command_fail(si, fault_needmoreparams, _("Syntax: \2SEENNICK <nick> sX\2 where X number"));
++	         return;  
++	     }
++		dbs.starting = atoi(option);
++	}
++
++	if(option[0] == 'c')
++	{
++	 dbs.exactm = true;	
++	}
++   option = strtok(NULL, " ");  
++  }	
++}
++
++      int count=0, match=0,i=0;
++      while(snick[i] != '\0')
++      {
++		  if ((unsigned char)snick[i] >= 0x41 && (unsigned char)snick[i] <= 0x7d || (unsigned char)snick[i] >=0x30 && (unsigned char)snick[i] <= 0x39 || (unsigned char)snick[i] >= 0xc0 && (unsigned char)snick[i] <= 0xff || (unsigned char)snick[i] == 0x2d)	  
++		  count++;
++		  
++		  if ((unsigned char)snick[i] == 0x2a || (unsigned char)snick[i] == 0x3f)
++		  match=1;
++		  
++		  i++;
++	  }
++	  
++	  if (count < 4 && match == 1)
++	  {
++		notice("SeenServ", si->su->nick, "\2%s\2 is too general, please include at least 4 non-wildcard characters.", snick);  
++	  } else {
++	   strcpy(dbs.purp, "R");
++	   dbs.host = snick;
++	   seen_db_t *cptr = &dbs;
++	   seen_write_to_db(si->su->nick, cptr);		  
++	  }
++}
+\ No newline at end of file
+diff --git a/modules/seenserv/seenserv.h b/modules/seenserv/seenserv.h
+new file mode 100644
+index 0000000..27fbcec
+--- /dev/null
++++ b/modules/seenserv/seenserv.h
+@@ -0,0 +1,645 @@
++#include <stdio.h>
++#include <string.h>
++#include <stdlib.h>
++#include <stdbool.h>
++#include <limits.h>
++
++// don't change the buffer size
++#define CYRBUFER 512
++
++//utf-8 cyrillic range
++#define MIN_CYR_16 0xd080
++#define MAX_CYR_16 0xd4af
++
++//cp1251 cyrillic range
++#define MIN_CYR_8  0x80
++#define MAX_CYR_8  0xFF
++
++#define END_OF_IT 0x00
++
++/* 
++ * function transalte utf8 to cp1251 bits
++ */
++unsigned char * utf8_to_cp1251(char *stext);
++
++/* 
++ * function transalte cp1251 to utf8 bits
++ */
++unsigned char * cp1251_to_utf8(char *stext);
++
++/* 
++ * character tables
++ */
++extern const unsigned char utf8[];
++extern const unsigned char cp1251[];
++// ------
++
++
++typedef struct seensrv_ seensrv_t;
++
++struct seensrv_
++{
++  char *nick;                   /* the IRC client's nickname  */
++  char *user;                   /* the IRC client's username  */
++  char *host;                   /* the IRC client's hostname  */
++  char *real;                   /* the IRC client's realname  */
++  
++  bool fantasy;		            /* enable fantasy commands    */
++  
++  char *trigger;		        /* trigger, e.g. !, ` or .    */
++
++  service_t *me;                /* our user_t struct          */
++  
++  unsigned int seenexpire;               /* SeenServ records expire in days */
++};
++
++seensrv_t seensrv;
++
++typedef struct seen_db_ seen_db_t;
++
++struct seen_db_
++{
++	char purp[100];
++	char *host;
++	unsigned int time_in;
++	unsigned int time_out;
++	char *reason;
++	int recors;
++	bool exactm;
++	int starting;
++	int method;
++	int utf8str;
++};
++
++const unsigned char ToLowerTabCyr[] = {
++	0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa,
++	0xb, 0xc, 0xd, 0xe, 0xf, 0x10, 0x11, 0x12, 0x13, 0x14,
++	0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d,
++	0x1e, 0x1f,
++	' ', '!', '"', '#', '$', '%', '&', 0x27, '(', ')',
++	'*', '+', ',', '-', '.', '/',
++	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
++	':', ';', '<', '=', '>', '?',
++	'@', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
++	'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's',
++	't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~',
++	'_',
++	'`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
++	'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's',
++	't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~',
++	0x7f,
++	0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89,
++	0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
++	0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99,
++	0x9a, 0x9b, 0x9c, 0x9d, 0x9e, 0x9f,
++	0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7, 0xa8, 0xa9,
++	0xaa, 0xab, 0xac, 0xad, 0xae, 0xaf,
++	0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9,
++	0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf,
++	
++	0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9,
++	0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
++	0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9,
++	0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
++	
++	0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9,
++	0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
++	0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9,
++	0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
++};
++
++int strcicmp(char const *a, char const *b, seen_db_t *dbs)
++{
++    for (;; a++, b++) {
++		int d;
++		if (dbs->exactm == true)
++		{
++			d = *a - *b;
++		} else {
++			d = ToLowerTabCyr[(unsigned char)(*a)] - ToLowerTabCyr[(unsigned char)(*b)];
++		}
++        if (d != 0 || !*a)
++            return d;
++    }
++}
++
++bool match_seen_mask(char *first, char * second, seen_db_t *dbs)
++{
++    if (*first == '\0' && *second == '\0')
++        return true;
++
++    if (*first == '*' && *(first+1) != '\0' && *second == '\0')
++        return false;
++        
++    if (*first == '?' || ToLowerTabCyr[(unsigned char)(*first)] == ToLowerTabCyr[(unsigned char)(*second)] && dbs->exactm == false || *first == *second && dbs->exactm == true)
++        return match_seen_mask(first+1, second+1, dbs);
++
++    if (*first == '*')
++        return match_seen_mask(first+1, second, dbs) || match_seen_mask(first, second+1, dbs);
++    return false;
++}
++
++char *time_ago_seen(time_t event, time_t basis)
++{
++	static char ret[128];
++	int years, weeks, days, hours, minutes, seconds;
++    //CURRTIME
++	event = basis - event;
++	years = weeks = days = hours = minutes = 0;
++
++	while (event >= 60 * 60 * 24 * 365)
++	{
++		event -= 60 * 60 * 24 * 365;
++		years++;
++	}
++	while (event >= 60 * 60 * 24 * 7)
++	{
++		event -= 60 * 60 * 24 * 7;
++		weeks++;
++	}
++	while (event >= 60 * 60 * 24)
++	{
++		event -= 60 * 60 * 24;
++		days++;
++	}
++	while (event >= 60 * 60)
++	{
++		event -= 60 * 60;
++		hours++;
++	}
++	while (event >= 60)
++	{
++		event -= 60;
++		minutes++;
++	}
++
++	seconds = event;
++
++	if (years)
++		snprintf(ret, sizeof(ret), "%dy %dw %dd", years, weeks, days);
++	else if (weeks)
++		snprintf(ret, sizeof(ret), "%dw %dd %dh", weeks, days, hours);
++	else if (days)
++		snprintf(ret, sizeof(ret), "%dd %dh %dm %ds", days, hours, minutes, seconds);
++	else if (hours)
++		snprintf(ret, sizeof(ret), "%dh %dm %ds", hours, minutes, seconds);
++	else if (minutes)
++		snprintf(ret, sizeof(ret), "%dm %ds", minutes, seconds);
++	else
++		snprintf(ret, sizeof(ret), "%ds", seconds);
++
++	return ret;
++}
++
++static char *get_word(char *text_line, char separator, int iword)
++{
++	int nword = 0;
++    char *word = (char*)malloc(sizeof(char)*(BUFSIZE+1));
++    int i = 0;	
++        while(1){
++            while(*text_line != separator && *text_line != '\0' &&  *text_line != '\n')
++            {
++              if(iword == nword)
++				  word[i++] = *text_line;
++		  
++              text_line++;
++            }
++			   
++            if(*text_line == '\0') 
++                break;
++
++            text_line++;
++            nword++;
++        }
++		   if (i == 0)
++		   {
++		     return NULL;	
++		      } else {
++			 word[i] = '\0';	  
++		     return word;			
++		   }
++}
++
++int get_record(FILE *in, FILE *out, seen_db_t *dbs)
++{
++	char line[BUFSIZE], newline[BUFSIZE], reason[BUFSIZE] = "", rreason[BUFSIZE] = "";
++	char *host_s;
++	int found_it = 0;
++	rewind(in);
++   while (fgets(line , sizeof(line) ,in ) != NULL)
++    {
++      if (strcicmp(dbs->host ,get_word(line,' ', 0), dbs) == 0)
++      {
++		  found_it = 1;
++		  if (strcmp(dbs->purp, "P") == 0) {
++          snprintf(newline, sizeof newline, "%s %s %d %s\n", dbs->host, get_word(line,' ', 1), dbs->time_out, dbs->reason);	  
++		  }
++		  if (strcmp(dbs->purp, "S") == 0) {
++		   int s = 3;
++		   host_s = get_word(line,' ', 3);	   
++		   while (host_s != NULL)
++            {
++		       snprintf(rreason, sizeof rreason, " %s", host_s);
++               strcat(reason, rreason);
++               s++;			   
++               host_s = get_word(line,' ', s);
++             }
++          snprintf(newline, sizeof newline, "%s %d %s%s\n", dbs->host, dbs->time_in, get_word(line,' ', 2), reason);
++		  }
++		  break;
++      }
++    }
++	if (found_it == 1)
++	{
++	   fputs(newline, out);
++	   return 1;
++	  } else {
++	   return 0;
++	}
++}
++
++
++void seen_write_to_db(const char *nick, seen_db_t *dbs) {
++     FILE *in, *out;
++	char line[BUFSIZE], linebuf[BUFSIZE], newline[BUFSIZE], reason[BUFSIZE] = "", rreason[BUFSIZE] = "";
++	char *host_s;
++	char name[BUFSIZE];
++    char name_temp[BUFSIZE];
++	snprintf(name, BUFSIZE, "%s/%s", datadir, "seenserv.db");
++	snprintf(name_temp, BUFSIZE, "%s/%s", datadir, "seenserv.temp");
++	
++	int found_it = 0;
++	
++	user_t *target_u;
++	
++   if (!strcmp(dbs->purp, "R") == 0) {
++	 in = fopen(name, "r" );	
++	out = fopen(name_temp, "w+" );
++
++	if (get_record(in, out, dbs) == 1)
++	{
++	  found_it = 1;
++	}
++   rewind(in);
++   while (fgets(line , sizeof(line) ,in ) != NULL)
++    {
++	  strcpy(linebuf, line);
++      if (strcicmp(dbs->host ,get_word(line,' ', 0), dbs) == 0)
++      {
++       } else {
++		  if (strlen(linebuf) > 0)
++		   {
++             target_u = user_find_named(get_word(linebuf,'!', 0));
++		   if ((atoi(get_word(linebuf,' ', 1)) + seensrv.seenexpire * 24 * 60 * 60) > CURRTIME)
++		     {
++			   fputs(linebuf, out);  
++		     } else if(target_u != NULL)
++			 {
++			   snprintf(reason, sizeof reason, "%s!%s@%s", target_u->nick, target_u->user, target_u->vhost); 
++			   if(strcicmp(dbs->host ,reason, dbs) == 0)
++			   {
++				fputs(linebuf, out);
++			   }				   
++			 }
++	       }
++	    }
++     }
++	  if(found_it == 0)
++	  {
++		 snprintf(newline, sizeof newline, "%s %d 0 \n", dbs->host, dbs->time_in);
++		 fputs(newline, out);
++	  }
++    fclose(in);
++	fclose(out);
++	remove(name);
++	rename(name_temp, name);
++   } else {
++	char *result[9];
++	char *hostc, *nick_s; 
++	char lineto[BUFSIZE], fline[BUFSIZE], eline[BUFSIZE];
++    int count = 0, scount = 0, current = 0, mcount = 0;
++	myuser_t *mu;
++	time_t time_login, time_singout;
++	in = fopen( name, "r" );
++     while (fgets(line , sizeof(line) ,in ) != NULL)
++    {
++	   strcpy(lineto, line);
++	   nick_s = get_word(line,'!', 0);
++      if (match_seen_mask(dbs->host, get_word(line,' ', 0), dbs) && dbs->method == 1 || match_seen_mask(dbs->host, nick_s, dbs) && dbs->method == 0 || strcicmp(dbs->host, nick_s, dbs) == 0)
++      {
++	       target_u = user_find_named(nick_s);
++	      if (strcicmp(dbs->host, nick_s, dbs) == 0 && target_u)
++	      {
++            goto isonlinenow;
++	      }		  
++		  if(mcount >= (dbs->starting - 1))
++		  {
++		  if (count < dbs->recors)
++		  {
++			result[count] = (char*)malloc(1024*sizeof(char));
++		    strcpy(result[count], lineto);
++            current++;			
++	      } 
++          count++;
++		 }
++	    mcount++;
++	  }
++	  
++	    if(scount > 100000)
++		  {
++			break;			
++		  }
++	       scount++;
++    }
++	fclose(in);
++	
++	if (scount > 100000)
++	{
++     notice("SeenServ", nick, "There are more than\2 100000\2 matches to your query; please refine it to see any output");	
++	} else {
++	  if (current == 0)
++	  {
++	    notice("SeenServ", nick, "No search results for \2%s", dbs->host);
++	  }	else {
++	   int i;
++	   notice("SeenServ", nick, "There are \2%i\2 results in the database; displaying max \2%i\2 starting from number \2%i\2: ", (count + dbs->starting - 1 ), current, dbs->starting);
++	   for (i = 0; i < current; i++)
++	   {
++		 int m = 3;
++		 strcpy(eline, "");
++		 strcpy(lineto, result[i]);
++		 snprintf(fline, sizeof fline, "\2%s\2 ", get_word(lineto,'!', 0));	  
++		 strcat(eline, fline);
++		 snprintf(fline, sizeof fline, "(\2%s\2) ", get_word(get_word(lineto,' ', 0), '!', 1));
++		 strcat(eline, fline);
++				
++		 time_login = atoi(get_word(lineto,' ', 1));
++
++		 time_singout = atoi(get_word(lineto,' ', 2));
++		 
++		 if (time_singout != 0)
++		 {
++		 snprintf(fline, sizeof fline, "was online \2%s\2 ago ", time_ago_seen(time_singout, CURRTIME));
++		 strcat(eline, fline);	
++           if (time_login < time_singout)
++		   {
++		     snprintf(fline, sizeof fline, "for \2%s\2", time_ago_seen(time_login, time_singout));
++		     strcat(eline, fline);				   
++		   } else {
++		     snprintf(fline, sizeof fline, "for \2%s\2", time_ago_seen(time_login, CURRTIME));
++		     strcat(eline, fline);				   
++		   }		 
++		 } else {
++		 snprintf(fline, sizeof fline, "was online \2%s\2 ago ", time_ago_seen(time_login, CURRTIME));
++		 strcat(eline, fline);				 
++		 }
++
++ 		 mu = myuser_find_ext(get_word(lineto,'!', 0));
++		  if (mu != NULL)
++			{
++			  if(mu->lastlogin > time_login)
++			  {
++		         snprintf(fline, sizeof fline, " | NickServ: \2Yes\2 |");
++		         strcat(eline, fline);					  
++			  } else {
++		         snprintf(fline, sizeof fline, " | NickServ: \2No\2 |");
++		         strcat(eline, fline);					  
++			  }
++			} else {
++		         snprintf(fline, sizeof fline, " | NickServ: \2No\2 |");
++		         strcat(eline, fline);						
++			}
++			
++			hostc = get_word(lineto,' ', 3);		
++			while (hostc != NULL)
++            {
++			snprintf(fline, sizeof fline, " %s", hostc);
++			strcat(eline, fline);
++			m++;
++			hostc = get_word(lineto,' ', m);
++			}
++	     notice("SeenServ", nick, "[%d] %s", (i + 1), eline);
++	     free(result[i]);
++	    }			  
++	  }
++	  goto endd;
++	  isonlinenow:
++	  notice("SeenServ", nick, "\2%s (%s@%s)\2 is currently online.", target_u->nick, target_u->user, target_u->vhost);
++	  endd:;
++	}
++  }
++}
++
++/* 
++ * match_utf_cyr match the utf-8 character cyrillic range
++ */
++ 
++int match_utf_cyr(char *stext)
++{
++    int i, m, s;
++    i = 0; m = 0; s = 0;
++	char text[CYRBUFER];
++	memset(text, 0, CYRBUFER);
++	strcpy(text, stext);
++	for (i = 0 ; i <  sizeof text; i++) {
++	  if ((unsigned char)(text[i]) != END_OF_IT) {
++		if (s == 0) {
++		if (((((unsigned char)text[i]<<8) | (unsigned char)text[i+1]) >= 0xd090) && ((((unsigned char)text[i]<<8) | (unsigned char)text[i+1]) <= 0xd18f)) {
++          m++; s = 1;
++	    } else if ((unsigned char)text[i] >= 0x80 && (unsigned char)text[i] <= 0xFF) {
++		  //return FALSE;	
++		} else if ((unsigned char)text[i] >= 0x21 && (unsigned char)text[i] <= 0x7E && (unsigned char)text[i] != 0x2a && (unsigned char)text[i] != 0x3f) {
++		  //return FALSE;
++		} 
++	   } else {
++		  if ((unsigned char)text[i] >= 0x21 && (unsigned char)text[i] <= 0x7E  && (unsigned char)text[i] != 0x2a && (unsigned char)text[i] != 0x3f) {
++			  //return FALSE;
++		  } 
++	    s = 0;
++	    }
++	   } else {break;}
++   }
++       if (m > 1) {return TRUE;} else {return FALSE;}
++}
++
++/* 
++ * cp1251_to_utf8 translate cyrillic range ONLY from cp1251 to utf-8
++ */
++ 
++unsigned char * cp1251_to_utf8(char *stext)
++{
++	int i, m, s;
++	char text[CYRBUFER];
++	static unsigned char output[CYRBUFER];
++	memset(text, 0, CYRBUFER);
++	strcpy(text, stext);
++	s = 0;
++	for (i = 0 ; i <  sizeof text; i++) {
++		if ((unsigned char)text[i] >= MIN_CYR_8 && (unsigned char)text[i] <= MAX_CYR_8) {
++            for (m = 0; m < strlen((char*)cp1251); m++) {
++              if ((unsigned char)text[i] == cp1251[m]) {
++				output[s] = utf8[m*2];
++				output[s+1] = utf8[m*2+1];
++				s+=2;
++                // if the symbol does not exists in cp1251 do nothing
++				goto searchOK;
++			   }
++		     }
++		      searchOK:;
++	        } else {
++		    output[s] = text[i];
++		    s++;
++		 }
++   }
++	return output;
++}
++
++/* 
++ * cp1251_to_utf8 translate cyrillic range ONLY from utf-8 to cp1251
++ */
++ 
++unsigned char * utf8_to_cp1251(char *stext)
++{
++	int i, m, s, sh;
++	char text[CYRBUFER];
++	static unsigned char output[CYRBUFER];
++	memset(output, 0, CYRBUFER);
++	memset(text, 0, CYRBUFER);
++	strcpy(text, stext);
++	sh = 0; s = 0;
++	for (i = 0 ; i <  sizeof text; i++) {
++		if ((unsigned char)(text[i]) != END_OF_IT) {
++		if ((((unsigned char)text[i]<<8) | (unsigned char)text[i+1]) >= MIN_CYR_16 && (((unsigned char)text[i]<<8) | (unsigned char)text[i+1]) <= MAX_CYR_16) {
++            for (m = 0; m < strlen((char*)utf8); m+= 2) {
++              if ((unsigned char)text[i] == utf8[m] && (unsigned char)text[i+1] == utf8[m + 1]) {
++				output[s] = cp1251[m/2];
++				s++;
++				sh = 1;
++				// if the symbol does not exists in utf-8 do nothing
++				goto searchOK;
++			   }
++		     }
++		      searchOK:;
++	        } else {
++				if (sh == 0) {
++				    output[s] = text[i];
++				    s++;
++				} else {
++					sh = 0;
++				}
++		 }
++	 } else {break;}
++   }
++	return output;
++}
++
++/* 
++ * utf-8 cyrillic characters split by 8-bit
++ * two 8-bit values is equal to one utf-8 hexadecimal character
++ */
++ 
++const unsigned char utf8[] = {
++	   /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0x82, 0xd0, 0x83, 0xd1, 0x93, 0xd0, 0x89,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0x8a, 0xd0, 0x8c, 0xd0, 0x8b, 0xd0, 0x8f,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd1, 0x92, 0xd1, 0x99, 0xd1, 0x9a, 0xd1, 0x9c,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd1, 0x9b, 0xd1, 0x9f, 0xd0, 0x8e, 0xd1, 0x9e,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0x88, 0xd2, 0x90, 0xd0, 0x81, 0xd0, 0x84,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0x87, 0xd0, 0x86, 0xd1, 0x96, 0xd2, 0x91,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd1, 0x91, 0xd1, 0x94, 0xd1, 0x98, 0xd1, 0x95,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd1, 0x95, 0xd1, 0x97, 0xd0, 0x90, 0xd0, 0x91,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0x92, 0xd0, 0x93, 0xd0, 0x94, 0xd0, 0x95,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0x96, 0xd0, 0x97, 0xd0, 0x98, 0xd0, 0x99,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0x9a, 0xd0, 0x9b, 0xd0, 0x9c, 0xd0, 0x9d,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0x9e, 0xd0, 0x9f, 0xd0, 0xa0, 0xd0, 0xa1,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0xa2, 0xd0, 0xa3, 0xd0, 0xa4, 0xd0, 0xa5,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0xa6, 0xd0, 0xa7, 0xd0, 0xa8, 0xd0, 0xa9,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0xaa, 0xd0, 0xab, 0xd0, 0xac, 0xd0, 0xad,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0xae, 0xd0, 0xaf, 0xd0, 0xb0, 0xd0, 0xb1,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0xb2, 0xd0, 0xb3, 0xd0, 0xb4, 0xd0, 0xb5,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0xb6, 0xd0, 0xb7, 0xd0, 0xb8, 0xd0, 0xb9,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0xba, 0xd0, 0xbb, 0xd0, 0xbc, 0xd0, 0xbd,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd0, 0xbe, 0xd0, 0xbf, 0xd1, 0x80, 0xd1, 0x81,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd1, 0x82, 0xd1, 0x83, 0xd1, 0x84, 0xd1, 0x85,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd1, 0x86, 0xd1, 0x87, 0xd1, 0x88, 0xd1, 0x89,
++       /*?*/       /*?*/       /*?*/       /*?*/
++    0xd1, 0x8a, 0xd1, 0x8b, 0xd1, 0x8c, 0xd1, 0x8d,
++       /*?*/       /*?*/
++    0xd1, 0x8e, 0xd1, 0x8f
++};
++
++/* 
++ * cp1251 cyrillic characters in 8-bit
++ */
++ 
++const unsigned char cp1251[] = {
++	/*?*/ /*?*/ /*?*/ /*?*/
++    0x80, 0x81, 0x83, 0x8a,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0x8c, 0x8d, 0x8e, 0x8f,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0x90, 0x9a, 0x9c, 0x9d,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0x9e, 0x9f, 0xa1, 0xa2,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xa3, 0xa5, 0xa8, 0xaa,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xaf, 0xb2, 0xb3, 0xb4,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xb8, 0xba, 0xbc, 0xbd,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xbe, 0xbf, 0xc0, 0xc1,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xc2, 0xc3, 0xc4, 0xc5,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xc6, 0xc7, 0xc8, 0xc9,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xca, 0xcb, 0xcc, 0xcd,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xce, 0xcf, 0xd0, 0xd1,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xd2, 0xd3, 0xd4, 0xd5,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xd6, 0xd7, 0xd8, 0xd9,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xda, 0xdb, 0xdc, 0xdd,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xde, 0xdf, 0xe0, 0xe1,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xe2, 0xe3, 0xe4, 0xe5,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xe6, 0xe7, 0xe8, 0xe9,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xea, 0xeb, 0xec, 0xed,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xee, 0xef, 0xf0, 0xf1,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xf2, 0xf3, 0xf4, 0xf5,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xf6, 0xf7, 0xf8, 0xf9,
++    /*?*/ /*?*/ /*?*/ /*?*/
++    0xfa, 0xfb, 0xfc, 0xfd,
++    /*?*/ /*?*/
++    0xfe, 0xff
++};
+
